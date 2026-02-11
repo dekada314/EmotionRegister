@@ -35,28 +35,30 @@ class EmotionRecognizer:
         self.batch_size = batch_size
         self.epochs = epochs
         self.validation_rate = validation_rate
-        
+
     def get_data_augmentation(self):
         return Sequential(
-        [
-            Rescaling(1.0 / 255),
-            RandomFlip("horizontal"),
-            RandomZoom(0.15),
-            RandomContrast(0.15),
-            RandomTranslation(0.15, 0.15),
-        ], name='data_augmentation')
+            [
+                Rescaling(1.0 / 255),
+                RandomFlip("horizontal"),
+                RandomZoom(0.15),
+                RandomContrast(0.15),
+                RandomTranslation(0.15, 0.15),
+            ],
+            name="data_augmentation",
+        )
 
     def datapretrain(self, train_dir: str, test_dir: str) -> None:
         train_ds = image_dataset_from_directory(
             train_dir,
             labels="inferred",
             label_mode="categorical",
-            color_mode='grayscale',
+            color_mode="grayscale",
             batch_size=BATCH_SIZE,
             validation_split=0.2,
             image_size=(IMAGE_SIZE, IMAGE_SIZE),
             shuffle=True,
-            subset='training',
+            subset="training",
             seed=1,
         )
 
@@ -64,24 +66,24 @@ class EmotionRecognizer:
             train_dir,
             labels="inferred",
             label_mode="categorical",
-            color_mode='grayscale',
+            color_mode="grayscale",
             batch_size=BATCH_SIZE,
             validation_split=0.2,
             image_size=(IMAGE_SIZE, IMAGE_SIZE),
             shuffle=False,
-            subset='validation',
-            seed=1
+            subset="validation",
+            seed=1,
         )
 
         test_ds = image_dataset_from_directory(
             test_dir,
-            labels='inferred',
-            label_mode='categorical',
-            color_mode='grayscale',
+            labels="inferred",
+            label_mode="categorical",
+            color_mode="grayscale",
             batch_size=BATCH_SIZE,
-            image_size=(IMAGE_SIZE, IMAGE_SIZE)
+            image_size=(IMAGE_SIZE, IMAGE_SIZE),
         )
-        
+
         # data_aug = self.get_data_augmentation()
 
         # AUTOTUNE = tf.data.AUTOTUNE #noqa
@@ -90,18 +92,16 @@ class EmotionRecognizer:
         #     lambda x, y: (Rescaling(1.0 / 255)(data_aug(x, training=True)), y),
         #     num_parallel_calls=AUTOTUNE
         # ).prefetch(AUTOTUNE)
-    
+
         # validation_ds = validation_ds.map(
         #     lambda x, y: (Rescaling(1.0 / 255)(x), y),
         #     num_parallel_calls=AUTOTUNE
         # ).prefetch(AUTOTUNE)
-        
+
         # train_ds = train_ds.map(
         #     lambda x, y: (Rescaling(1.0 / 255)(x), y),
         #     num_parallel_calls=AUTOTUNE
         # ).prefetch(AUTOTUNE)
-
-        
 
         return train_ds, validation_ds, test_ds
 
@@ -122,8 +122,6 @@ class EmotionRecognizer:
                 Activation("relu"),
                 MaxPooling2D(2, 2),
                 Dropout(0.25),
-                
-                
                 Conv2D(
                     128,
                     (3, 3),
@@ -138,11 +136,7 @@ class EmotionRecognizer:
                 Activation("relu"),
                 MaxPooling2D(2, 2),
                 Dropout(0.35),
-                
-
-                
                 # ----------Classification------------
-
                 Flatten(),
                 Dense(256, kernel_regularizer=l2(0.0005)),
                 BatchNormalization(),
