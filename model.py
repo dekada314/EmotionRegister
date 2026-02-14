@@ -33,7 +33,7 @@ TEST_DIR = "dataset/test"
 
 IMAGE_SIZE = 48
 BATCH_SIZE = 32
-EPOCHS = 15
+EPOCHS = 100
 
 
 class EmotionRecognizer:
@@ -45,12 +45,9 @@ class EmotionRecognizer:
     def get_data_augmentation(self):
         return Sequential(
             [
-                Rescaling(1.0 / 255),
                 RandomFlip("horizontal"),
                 RandomRotation(0.15),
                 RandomZoom(0.15),
-                RandomContrast(0.2),
-                RandomBrightness(0.2),
             ],
             name="data_augmentation",
         )
@@ -138,40 +135,51 @@ class EmotionRecognizer:
                 BatchNormalization(),
                 Activation(relu),
                 MaxPooling2D(),
-                Dropout(0.2),
+                
                 Conv2D(
                     64,
                     (3, 3),
                     padding="same",
-                    kernel_regularizer=l2(0.001),
+                    kernel_regularizer=l2(0.0001),
                 ),
                 BatchNormalization(),
                 Activation(relu),
                 MaxPooling2D(),
-                Dropout(0.25),
+                
                 Conv2D(
                     128,
                     (3, 3),
                     padding="same",
-                    kernel_regularizer=l2(0.001),
+                    kernel_regularizer=l2(0.0001),
                 ),
                 BatchNormalization(),
                 Activation(relu),
                 MaxPooling2D(),
-                Dropout(0.3),
+                
+                Conv2D(
+                    256,
+                    (3, 3),
+                    padding="same",
+                    kernel_regularizer=l2(0.0001),
+                ),
+                BatchNormalization(),
+                Activation(relu),
+                MaxPooling2D(),
                 # ----------Classification------------
                 GlobalAveragePooling2D(),
                 
-                Dense(128, kernel_regularizer=l2(0.001)),
+                Dense(256, kernel_regularizer=l2(0.0001)),
                 Dropout(0.4),
                 
                 Dense(7, activation=softmax),
             ]
         )
 
+        loss = CategoricalCrossentropy(label_smoothing=0.05)
+        
         model.compile(
-            optimizer=AdamW(learning_rate=0.001),
-            loss=CategoricalCrossentropy,
+            optimizer=AdamW(learning_rate=3e-4, weight_decay=1e-4),
+            loss=loss,
             metrics=["accuracy"],
         )
         return model
@@ -187,6 +195,19 @@ if __name__ == "__main__":
 
     model = base_model.create_model()
     model.summary()
+    
+    y_train = np.concatenate(
+            [np.argmax(y.numpy(), axis=1) for _, y in train_data],
+            axis=0
+        )
+        
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(y_train),
+        y = y_train
+    )
+    
+    class_weights_dict = dict(enumerate(class_weights))
 
     callbacks = [
         EarlyStopping(
@@ -209,6 +230,7 @@ if __name__ == "__main__":
         validation_data=validation_data,
         epochs=base_model.epochs,
         callbacks=callbacks,
+        class_weight=class_weights_dict
     )
 
     test_loss, test_acc = model.evaluate(test_data)
